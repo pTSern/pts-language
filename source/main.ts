@@ -20,6 +20,9 @@ const __state_: IState = Object.create(null);
 __state_.promise = new Promise<void>(_rs => __state_.resolver = _rs);
 
 export const methods: { [key: string]: (...any: any[]) => any } = {
+    openPanel() {
+        Editor.Panel.open(pkg.name);
+    },
     "force-generate": async function() {
         return _shiping();
     },

@@ -18,11 +18,22 @@
         "fs-extra": "^10.0.0",
         "typescript": "^5.8.2"
     },
+    "panels": {
+        "default": {
+            "title": "pTS_Language",
+            "type": "dockable",
+            "main": "dist/panel.js",
+            "size": {
+                "min-width": 450,
+                "min-height": 600
+            }
+        }
+    },
     "contributions": {
         "asset-db": {
             "mount": {
                 "path": "./assets",
-                "readonly": true
+                "readonly": false
             }
         },
         "profile": {
@@ -36,6 +47,11 @@
                     "default": true,
                     "message": "profile::project::changed_refresh",
                     "label": "Always Refresh"
+                },
+                "btn_open_panel": {
+                    "default": false,
+                    "message": "open-panel",
+                    "label": "Open Language Panel"
                 },
                 "btn_force_generate": {
                     "default": false,
@@ -63,6 +79,13 @@
                             "tooltip": "Auto-regenerate when JSON files change in AssetDB"
                         }
                     },
+                    "btn_open_panel": {
+                        "ui": "ui-button",
+                        "attributes": {
+                            "type": "primary",
+                            "label": "Open Language Panel"
+                        }
+                    },
                     "btn_force_generate": {
                         "ui": "ui-button",
                         "attributes": {
@@ -74,6 +97,11 @@
             }
         },
         "messages": {
+            "open-panel": {
+                "methods": [
+                    "openPanel"
+                ]
+            },
             "force-generate": {
                 "methods": [
                     "force-generate"
@@ -89,6 +117,13 @@
                     "profile::project::changed_refresh"
                 ]
             }
-        }
+        },
+        "menu": [
+            {
+                "path": "i18n:pts-language.panel",
+                "label": "Language Manager",
+                "message": "open-panel"
+            }
+        ]
     }
 }
