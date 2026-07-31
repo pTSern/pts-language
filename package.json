@@ -24,7 +24,7 @@
             "type": "dockable",
             "main": "dist/panel.js",
             "size": {
-                "min-width": 450,
+                "min-width": 600,
                 "min-height": 600
             }
         }
@@ -33,7 +33,7 @@
         "asset-db": {
             "mount": {
                 "path": "./assets",
-                "readonly": false
+                "readonly": true
             }
         },
         "profile": {

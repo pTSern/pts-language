@@ -122,9 +122,95 @@ async function _getConfig() {
     return __config_;
 }
 
+async function _ensureBundle(dbPath: string): Promise<{ bundle: string; path: string }> {
+    if (!dbPath) return { bundle: '', path: '' };
+
+    let currentDb = dbPath.replace(/\\/g, '/');
+
+    while (currentDb && currentDb.startsWith('db://assets')) {
+        if (currentDb === 'db://assets') break;
+
+        let isBundle = false;
+
+        // Check via Editor AssetDB Message
+        try {
+            const assetInfo = await Editor.Message.request('asset-db', 'query-asset-info', currentDb) as AssetInfo;
+            if (assetInfo?.uuid) {
+                const meta = await Editor.Message.request('asset-db', 'query-asset-meta', assetInfo.uuid) as IAssetMeta;
+                if (meta?.userData?.isBundle) {
+                    isBundle = true;
+                }
+            }
+        } catch (e) {}
+
+        // Fallback check via physical .meta file
+        if (!isBundle) {
+            try {
+                const relPath = currentDb.substring('db://assets'.length);
+                const physicPath = path.join(Editor.Project.path, 'assets', relPath);
+                const metaFilePath = physicPath + '.meta';
+                if (fs.existsSync(metaFilePath)) {
+                    const rawMeta = fs.readFileSync(metaFilePath, 'utf8');
+                    const metaContent = JSON.parse(rawMeta);
+                    if (metaContent?.userData?.isBundle) {
+                        isBundle = true;
+                    }
+                }
+            } catch (e) {}
+        }
+
+        if (isBundle) {
+            return {
+                bundle: currentDb,
+                path: dbPath
+            };
+        }
+
+        const lastSlash = currentDb.lastIndexOf('/');
+        if (lastSlash <= 'db://assets'.length) {
+            break;
+        } else {
+            currentDb = currentDb.substring(0, lastSlash);
+        }
+    }
+
+    // None of the parent folders is a bundle -> Force set target folder (dbPath) as bundle
+    try {
+        const assetInfo = await Editor.Message.request('asset-db', 'query-asset-info', dbPath) as AssetInfo;
+        if (assetInfo?.uuid) {
+            const meta = await Editor.Message.request('asset-db', 'query-asset-meta', dbPath) as IAssetMeta;
+            if (meta) {
+                meta.userData = meta.userData || {};
+                meta.userData.isBundle = true;
+                await Editor.Message.request('asset-db', 'save-asset-meta', meta.uuid, JSON.stringify(meta));
+                await Editor.Message.request('asset-db', 'refresh-asset', dbPath);
+            }
+        } else {
+            const relPath = dbPath.substring('db://assets'.length);
+            const physicPath = path.join(Editor.Project.path, 'assets', relPath);
+            const metaFilePath = physicPath + '.meta';
+            if (fs.existsSync(metaFilePath)) {
+                const rawMeta = fs.readFileSync(metaFilePath, 'utf8');
+                const metaContent = JSON.parse(rawMeta) || {};
+                metaContent.userData = metaContent.userData || {};
+                metaContent.userData.isBundle = true;
+                fs.writeFileSync(metaFilePath, JSON.stringify(metaContent, null, 4), 'utf8');
+                await Editor.Message.request('asset-db', 'refresh-asset', dbPath);
+            }
+        }
+    } catch (e) {
+        console.error(`[${pkg.name}] Failed to force set bundle for ${dbPath}`, e);
+    }
+
+    return {
+        bundle: dbPath,
+        path: dbPath
+    };
+}
+
 async function _generate(jsonDir: { db: string; physic: string; project: string }, pluginDir: { db: string; physic: string }) {
     const _$langs: Record<string, any> = { __enums__: null };
-    const _$container: Record<string, any> = {};
+    const _$container: Record<string, any> = { __enums__: null };
 
     if (fs.existsSync(jsonDir.physic)) {
         try {
@@ -136,7 +222,6 @@ async function _generate(jsonDir: { db: string; physic: string; project: string 
                 _$langs[fileNameKey] = fileNameKey;
 
                 const fullPath = path.join(jsonDir.physic, file);
-                const fileContainer: Record<string, any> = { __enums__: null };
 
                 try {
                     const rawData = fs.readFileSync(fullPath, 'utf8');
@@ -151,15 +236,13 @@ async function _generate(jsonDir: { db: string; physic: string; project: string 
                             const isStringArray = Array.isArray(val) && val.every(item => typeof item === 'string');
 
                             if (isString || isStringArray) {
-                                fileContainer[key] = key;
+                                _$container[key] = key;
                             }
                         }
                     }
                 } catch (e) {
                     console.error(`[${pkg.name}] Error reading/parsing JSON file: ${file}`, e);
                 }
-
-                _$container[fileNameKey] = fileContainer;
             }
         } catch (e) {
             console.error(`[${pkg.name}] Failed to read JSON directory: ${jsonDir.physic}`, e);
@@ -167,23 +250,63 @@ async function _generate(jsonDir: { db: string; physic: string; project: string 
     }
 
     const langKeys = Object.keys(_$langs).filter(k => k !== '__enums__');
+    const validKeys = Object.keys(_$container).filter(k => k !== '__enums__');
+    const langCount = langKeys.length;
+    const pathObj = await _ensureBundle(jsonDir.db);
+
+    // Calculate bundle name without db://assets/ prefix
+    let bundleName = pathObj.bundle;
+    if (bundleName.startsWith('db://assets/')) {
+        bundleName = bundleName.substring('db://assets/'.length);
+    } else if (bundleName.startsWith('db://assets')) {
+        bundleName = bundleName.substring('db://assets'.length);
+    }
+    if (bundleName.startsWith('/')) {
+        bundleName = bundleName.substring(1);
+    }
+
+    // Calculate relative path inside bundle
+    let relPath = '';
+    if (pathObj.path.startsWith(pathObj.bundle)) {
+        relPath = pathObj.path.substring(pathObj.bundle.length);
+        if (relPath.startsWith('/')) {
+            relPath = relPath.substring(1);
+        }
+    }
 
     // Build JS Content
-    let _js = `const _$path = ${JSON.stringify(jsonDir.project)};\n`;
+    let _js = `const _$path = ${JSON.stringify(bundleName)};\n`;
     _js += `const _$langs = ${JSON.stringify(_$langs)};\n`;
-    _js += `const _$container = ${JSON.stringify(_$container)};\n\n`;
-    _js += `function Enum(key) {\n    return _$container[key];\n}\n\n`;
+    _js += `const _$container = ${JSON.stringify(_$container)};\n`;
+    _js += `const _$count = ${langCount};\n\n`;
+
+    _js += `function _$has(key) {\n    return !!_$langs[key];\n}\n\n`;
+
+    _js += `function _$load(callback) {\n`;
+    _js += `    const _ = ${JSON.stringify(relPath)};\n`;
+    _js += `    for (const _lang in _$langs) {\n`;
+    _js += `        if (_lang === '__enums__') continue;\n`;
+    _js += `        const _sub = _ ? (_ + '/' + _lang) : _lang;\n`;
+    _js += `        callback(_sub);\n`;
+    _js += `    }\n`;
+    _js += `}\n\n`;
+
     _js += `window['pTS'] = window['pTS'] || {};\n`;
-    _js += `window['pTS']['languages'] = {\n    Enum, ELang: _$langs, path: _$path,\n};\n`;
+    _js += `window['pTS']['languages'] = {\n    ELang: _$langs, path: _$path, EKey: _$container, load: _$load, has: _$has, count: _$count,\n};\n`;
 
     // Build d.ts Content
     let _dts = `declare namespace pTS {\n`;
     _dts += `    export namespace languages {\n`;
     _dts += `        const _$langs = [${langKeys.map(k => `"${k}"`).join(', ')}] as const;\n`;
     _dts += `        export type TLang = typeof _$langs[number];\n`;
-    _dts += `        export function Enum(key: TLang): Record<string, string>;\n`;
+    _dts += `        const _$keys = [${validKeys.map(k => `"${k}"`).join(', ')}] as const;\n`;
+    _dts += `        export type TKey = typeof _$keys[number];\n`;
     _dts += `        export const path: string;\n`;
     _dts += `        export const ELang: Record<string, string>;\n`;
+    _dts += `        export const EKey: Record<string, string>;\n`;
+    _dts += `        export function load(callback: pFlex.TFunc<[string], void>): void;\n`;
+    _dts += `        export function has(key: string): boolean;\n`;
+    _dts += `        export const count: number;\n`;
     _dts += `    }\n`;
     _dts += `}\n`;
 

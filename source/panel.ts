@@ -16,8 +16,28 @@ export const template = `
 
         <div class="actions-row">
             <ui-button class="add-btn" type="primary">Add Key</ui-button>
+            <ui-button class="add-lang-btn" type="info">Add Lang</ui-button>
+            <ui-button class="remove-toggle-btn" type="warning">Remove Mode</ui-button>
             <ui-button class="refresh-btn" type="secondary">Refresh Data</ui-button>
             <ui-button class="save-btn" type="success">Save All Changes</ui-button>
+        </div>
+
+        <div class="add-key-container hidden">
+            <ui-input class="new-key-input" placeholder="Type new key name..." show-clear></ui-input>
+            <ui-button class="confirm-add-btn" type="primary">Confirm</ui-button>
+            <ui-button class="cancel-add-btn">Cancel</ui-button>
+        </div>
+
+        <div class="add-lang-container hidden">
+            <ui-input class="new-lang-input" placeholder="Type new language code (e.g. fr, ja)..." show-clear></ui-input>
+            <ui-button class="confirm-add-lang-btn" type="primary">Confirm</ui-button>
+            <ui-button class="cancel-add-lang-btn">Cancel</ui-button>
+        </div>
+
+        <div class="remove-bar-container hidden">
+            <span class="remove-count-label">0 keys selected to remove</span>
+            <ui-button class="confirm-remove-btn" type="danger">Confirm Remove</ui-button>
+            <ui-button class="cancel-remove-btn">Cancel</ui-button>
         </div>
     </div>
 
@@ -63,6 +83,41 @@ export const style = `
     gap: 10px;
     margin-top: 4px;
 }
+.add-key-container, .add-lang-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    padding: 6px 8px;
+    background: var(--color-normal-fill, #252525);
+    border: 1px dashed var(--color-normal-border, #444);
+    border-radius: 4px;
+}
+.add-key-container.hidden, .add-lang-container.hidden {
+    display: none;
+}
+.remove-bar-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 6px;
+    padding: 6px 10px;
+    background: var(--color-danger-fill, #4d1515);
+    border: 1px solid var(--color-danger-border, #a61c1c);
+    border-radius: 4px;
+}
+.remove-bar-container.hidden {
+    display: none;
+}
+.remove-count-label {
+    flex: 1;
+    font-size: 12px;
+    font-weight: bold;
+    color: #ffccc7;
+}
+.new-key-input, .new-lang-input {
+    flex: 1;
+}
 .search-bar-container {
     width: 100%;
 }
@@ -90,6 +145,14 @@ export const style = `
     display: flex;
     flex-direction: column;
     gap: 6px;
+}
+.key-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.remove-checkbox {
+    margin-right: 2px;
 }
 .key-title {
     font-weight: bold;
@@ -123,6 +186,20 @@ export const $ = {
     jsonFolder: '.json-folder',
     alwaysRefresh: '.always-refresh',
     addBtn: '.add-btn',
+    addKeyContainer: '.add-key-container',
+    newKeyInput: '.new-key-input',
+    confirmAddBtn: '.confirm-add-btn',
+    cancelAddBtn: '.cancel-add-btn',
+    addLangBtn: '.add-lang-btn',
+    addLangContainer: '.add-lang-container',
+    newLangInput: '.new-lang-input',
+    confirmAddLangBtn: '.confirm-add-lang-btn',
+    cancelAddLangBtn: '.cancel-add-lang-btn',
+    removeToggleBtn: '.remove-toggle-btn',
+    removeBarContainer: '.remove-bar-container',
+    removeCountLabel: '.remove-count-label',
+    confirmRemoveBtn: '.confirm-remove-btn',
+    cancelRemoveBtn: '.cancel-remove-btn',
     refreshBtn: '.refresh-btn',
     saveBtn: '.save-btn',
     searchInput: '.search-input',
@@ -134,6 +211,9 @@ let activePanel: any = null;
 let currentData: Record<string, Record<string, { value: string; isArray: boolean }>> = {};
 let currentLangs: string[] = [];
 let currentFilter: string = '';
+
+let isRemoveMode: boolean = false;
+let keysToRemove: Set<string> = new Set<string>();
 
 function getPhysicPath(rawPath: string): string | null {
     if (!rawPath) return null;
@@ -210,6 +290,12 @@ async function loadDataFromDisk(jsonFolder: string) {
     }
 }
 
+function updateRemoveBarCount(thisAny: any) {
+    if (thisAny.$.removeCountLabel) {
+        thisAny.$.removeCountLabel.textContent = `${keysToRemove.size} key(s) selected to remove`;
+    }
+}
+
 function renderKeysList(thisAny: any) {
     const container = thisAny.$.keysList;
     if (!container) return;
@@ -236,10 +322,30 @@ function renderKeysList(thisAny: any) {
         const card = document.createElement('div');
         card.className = 'key-card';
 
+        const titleRow = document.createElement('div');
+        titleRow.className = 'key-title-row';
+
+        if (isRemoveMode) {
+            const checkbox = document.createElement('ui-checkbox') as any;
+            checkbox.className = 'remove-checkbox';
+            checkbox.value = keysToRemove.has(key);
+            checkbox.addEventListener('change', () => {
+                if (checkbox.value) {
+                    keysToRemove.add(key);
+                } else {
+                    keysToRemove.delete(key);
+                }
+                updateRemoveBarCount(thisAny);
+            });
+            titleRow.appendChild(checkbox);
+        }
+
         const title = document.createElement('div');
         title.className = 'key-title';
         title.textContent = key;
-        card.appendChild(title);
+        titleRow.appendChild(title);
+
+        card.appendChild(titleRow);
 
         const rowsContainer = document.createElement('div');
         rowsContainer.className = 'lang-rows-container';
@@ -384,15 +490,31 @@ export const ready = async function(this: any) {
         updateProfile('always_refresh', this.$.alwaysRefresh.value, 'profile::project::changed_refresh');
     });
 
-    this.$.addBtn?.addEventListener('click', async () => {
-        const newKey = prompt('Enter new language key name:');
-        if (!newKey) return;
-        const trimmedKey = newKey.trim();
+    // Add Key UI Handlers
+    this.$.addBtn?.addEventListener('click', () => {
+        this.$.addKeyContainer?.classList.remove('hidden');
+        this.$.addLangContainer?.classList.add('hidden');
+        if (this.$.newKeyInput) {
+            this.$.newKeyInput.value = '';
+        }
+    });
+
+    this.$.cancelAddBtn?.addEventListener('click', () => {
+        this.$.addKeyContainer?.classList.add('hidden');
+        if (this.$.newKeyInput) {
+            this.$.newKeyInput.value = '';
+        }
+    });
+
+    const performAddKey = async () => {
+        const rawKey = this.$.newKeyInput?.value || '';
+        const trimmedKey = rawKey.trim();
         if (!trimmedKey) return;
 
         if (currentData[trimmedKey]) {
-            alert(`Key "${trimmedKey}" already exists!`);
             currentFilter = trimmedKey;
+            if (this.$.searchInput) this.$.searchInput.value = trimmedKey;
+            this.$.addKeyContainer?.classList.add('hidden');
             renderKeysList(this);
             return;
         }
@@ -410,11 +532,136 @@ export const ready = async function(this: any) {
             this.$.searchInput.value = trimmedKey;
         }
 
+        this.$.addKeyContainer?.classList.add('hidden');
+        if (this.$.newKeyInput) this.$.newKeyInput.value = '';
+
         renderKeysList(this);
 
         if (this.$.alwaysRefresh?.value) {
             await saveAllDataToDisk(this);
         }
+    };
+
+    this.$.confirmAddBtn?.addEventListener('click', performAddKey);
+    this.$.newKeyInput?.addEventListener('confirm', performAddKey);
+
+    // Add Lang UI Handlers
+    this.$.addLangBtn?.addEventListener('click', () => {
+        this.$.addLangContainer?.classList.remove('hidden');
+        this.$.addKeyContainer?.classList.add('hidden');
+        if (this.$.newLangInput) {
+            this.$.newLangInput.value = '';
+        }
+    });
+
+    this.$.cancelAddLangBtn?.addEventListener('click', () => {
+        this.$.addLangContainer?.classList.add('hidden');
+        if (this.$.newLangInput) {
+            this.$.newLangInput.value = '';
+        }
+    });
+
+    const performAddLang = async () => {
+        const rawLang = this.$.newLangInput?.value || '';
+        const langCode = rawLang.trim().toLowerCase();
+        if (!langCode) return;
+
+        const profile = await Editor.Profile.getProject(pkg.name) as any || {};
+        const jsonFolder = profile.located_json || '';
+        const physicDir = getPhysicPath(jsonFolder);
+
+        if (!physicDir || !fs.existsSync(physicDir)) {
+            console.warn(`[${pkg.name}] Cannot add language. Invalid JSON folder: ${physicDir}`);
+            return;
+        }
+
+        if (!currentLangs.includes(langCode)) {
+            currentLangs.push(langCode);
+        }
+
+        const newLangFilePath = path.join(physicDir, `${langCode}.json`);
+        const fileContent: Record<string, any> = {};
+
+        for (const key of Object.keys(currentData)) {
+            currentData[key][langCode] = currentData[key][langCode] || { value: '', isArray: false };
+            fileContent[key] = currentData[key][langCode].isArray ? [] : '';
+        }
+
+        try {
+            fs.writeFileSync(newLangFilePath, JSON.stringify(fileContent, null, 4), 'utf8');
+        } catch (e) {
+            console.error(`[${pkg.name}] Failed to write new language file: ${newLangFilePath}`, e);
+        }
+
+        this.$.addLangContainer?.classList.add('hidden');
+        if (this.$.newLangInput) this.$.newLangInput.value = '';
+
+        renderKeysList(this);
+        await Editor.Message.send(pkg.name, 'force-generate');
+    };
+
+    this.$.confirmAddLangBtn?.addEventListener('click', performAddLang);
+    this.$.newLangInput?.addEventListener('confirm', performAddLang);
+
+    // Remove Mode UI Handlers
+    this.$.removeToggleBtn?.addEventListener('click', () => {
+        isRemoveMode = !isRemoveMode;
+        if (isRemoveMode) {
+            this.$.removeBarContainer?.classList.remove('hidden');
+            if (this.$.removeToggleBtn) this.$.removeToggleBtn.textContent = 'Exit Remove';
+        } else {
+            this.$.removeBarContainer?.classList.add('hidden');
+            if (this.$.removeToggleBtn) this.$.removeToggleBtn.textContent = 'Remove Mode';
+            keysToRemove.clear();
+        }
+        updateRemoveBarCount(this);
+        renderKeysList(this);
+    });
+
+    this.$.cancelRemoveBtn?.addEventListener('click', () => {
+        isRemoveMode = false;
+        keysToRemove.clear();
+        this.$.removeBarContainer?.classList.add('hidden');
+        if (this.$.removeToggleBtn) this.$.removeToggleBtn.textContent = 'Remove Mode';
+        renderKeysList(this);
+    });
+
+    this.$.confirmRemoveBtn?.addEventListener('click', async () => {
+        if (keysToRemove.size === 0) return;
+
+        const profile = await Editor.Profile.getProject(pkg.name) as any || {};
+        const jsonFolder = profile.located_json || '';
+        const physicDir = getPhysicPath(jsonFolder);
+
+        for (const key of keysToRemove) {
+            delete currentData[key];
+        }
+
+        if (physicDir && fs.existsSync(physicDir)) {
+            for (const lang of currentLangs) {
+                const fullPath = path.join(physicDir, `${lang}.json`);
+                try {
+                    if (fs.existsSync(fullPath)) {
+                        const raw = fs.readFileSync(fullPath, 'utf8');
+                        const content = JSON.parse(raw) || {};
+                        for (const key of keysToRemove) {
+                            delete content[key];
+                        }
+                        fs.writeFileSync(fullPath, JSON.stringify(content, null, 4), 'utf8');
+                    }
+                } catch (e) {
+                    console.error(`[${pkg.name}] Error deleting keys from ${fullPath}`, e);
+                }
+            }
+        }
+
+        keysToRemove.clear();
+        isRemoveMode = false;
+        this.$.removeBarContainer?.classList.add('hidden');
+        if (this.$.removeToggleBtn) this.$.removeToggleBtn.textContent = 'Remove Mode';
+
+        renderKeysList(this);
+        await Editor.Message.send(pkg.name, 'force-generate');
     });
 
     this.$.refreshBtn?.addEventListener('click', async () => {
