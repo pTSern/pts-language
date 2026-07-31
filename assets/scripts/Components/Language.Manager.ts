@@ -18,10 +18,10 @@ export class Language_Manager {
     get driver() { return this._driver }
 
     async get(key: string) {
-        await this._$promise;
+        await this.load();
 
         const _json = this._$map[this._$country];
-        if(!_json) return
+        if(!_json) return "[NONE]"
         return _json[key];
     }
 
@@ -61,9 +61,7 @@ export class Language_Manager {
     }
 }
 
-(pConst.EDITOR_ONLY_IN_PREVIEW || COCOS_RUNTIME) && director.once(DirectorEvent.BEFORE_SCENE_LAUNCH, () => {
-    console.log("[-----------------------------------]")
-    instance(Language_Manager).load().then(_out => 
-    console.log("LOAD >>>", _out))
-})
+(pConst.EDITOR_ONLY_IN_PREVIEW || COCOS_RUNTIME) && director.once(DirectorEvent.BEFORE_SCENE_LAUNCH, () => 
+    instance(Language_Manager).load()
+)
 

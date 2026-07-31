@@ -21,14 +21,15 @@ export class Language_SmartKey extends Component {
         return instance(Language_Manager)
     }
 
-    @property({ visible: pConst.EDITOR_ONLY_IN_PREVIEW })
+    @property({})
+    isUpdateKey: boolean = true;
+
+    @property({ visible: pConst.EDITOR_ONLY_IN_PREVIEW, readonly: true })
     protected _key: pTS.languages.TKey = '' as pTS.languages.TKey;
-    @property({ type: pTS.languages.EKey })
+
+    @property({ type: pTS.languages.EKey, visible() { return this.isUpdateKey } })
     get key() { return this._key }
-    set key(x) {
-        console.log("[Language_Manager] Log: ", x)
-        this._key = x;
-    }
+    set key(x) { this._key = x }
 
     protected _ensure() {
         if(!this._hooker) {
@@ -38,11 +39,15 @@ export class Language_SmartKey extends Component {
 
     protected onEnable(): void {
         this._actUpdateTTF();
-        console.log("[Language_SmartKey] Key: ", this.key)
-        instance(Language_Manager).get(this.key).then(_ => {
-            this._hooker.string = _;
-            console.log("[Language_SmartKey] Log: ", this.key, _, instance(Language_Manager))
-        })
+        this._actUpdateKey();
+    }
+
+    protected _actUpdateKey() {
+        if(!this.isUpdateKey) return;
+
+        instance(Language_Manager).get(this.key).then(_ => 
+            this._hooker.string = _
+        )
     }
 
     protected _actUpdateTTF() {
