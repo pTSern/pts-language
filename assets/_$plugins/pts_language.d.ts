@@ -2,7 +2,7 @@ declare namespace pTS {
     export namespace languages {
         const _$langs = ["en", "vi"] as const;
         export type TLang = typeof _$langs[number];
-        const _$keys = ["test"] as const;
+        const _$keys = ["get", "reward", "double"] as const;
         export type TKey = typeof _$keys[number];
         export const path: string;
         export const ELang: Record<string, string>;

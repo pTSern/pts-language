@@ -1,6 +1,6 @@
 const _$path = "game";
 const _$langs = {"__enums__":null,"en":"en","vi":"vi"};
-const _$container = {"__enums__":null,"test":"test"};
+const _$container = {"__enums__":null,"get":"get","reward":"reward","double":"double"};
 const _$count = 2;
 
 function _$has(key) {

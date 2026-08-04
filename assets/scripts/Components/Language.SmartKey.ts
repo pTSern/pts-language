@@ -1,10 +1,52 @@
-import { _decorator, Component, Label } from 'cc';
-import { editor_property, instance } from 'db://pts-core/scripts/utils/pClass';
+import { _decorator, Component, Enum, Label } from 'cc';
+import { instance } from 'db://pts-core/scripts/utils/pClass';
 import { Config_GlobalTTF } from '../Config/Config.GlobalTTF';
 import { Language_Manager } from './Language.Manager';
-import { pConst } from 'db://pts-core/scripts/utils';
+import { pConst, pString } from 'db://pts-core/scripts/utils';
 
 const { ccclass, property, requireComponent, menu } = _decorator;
+
+enum _EMode {
+    Normal = 0,
+    Pascal,
+    Upper,
+    Lower
+}
+
+Enum(_EMode);
+
+@ccclass("Language_SmartKey_LangKey")
+class _LangKey {
+    @property({ type: _EMode })
+    mode: _EMode = _EMode.Pascal;
+
+    @property({ })
+    prefix: string = ""
+
+    @property({ visible: pConst.EDITOR_ONLY_IN_PREVIEW, readonly: true })
+    protected _key = '' as pTS.languages.TKey
+
+    @property({ type: pTS.languages.EKey })
+    get key() { return this._key }
+    set key(x) { this._key = x }
+
+    @property({ })
+    suffix: string = ""
+
+    async get() {
+        const _out = await instance(Language_Manager).get(this.key);
+        const _str = this.prefix + _out + this.suffix;
+
+        switch(this.mode) {
+            case _EMode.Pascal: return pString.pascal(_str)
+            case _EMode.Upper: return _str.toUpperCase()
+            case _EMode.Lower: return _str.toLowerCase()
+        }
+
+        return _str;
+    }
+
+}
 
 @ccclass('Language_SmartKey')
 @menu('pts-language/Language/SmartKey')
@@ -16,20 +58,14 @@ export class Language_SmartKey extends Component {
     get hooker() { this._ensure(); return this._hooker }
     set hooker(x) { if(!x) { this._ensure(); return; } this._hooker = x }
 
-    @editor_property(Language_Manager)
-    get __check() {
-        return instance(Language_Manager)
-    }
-
     @property({})
     isUpdateKey: boolean = true;
 
-    @property({ visible: pConst.EDITOR_ONLY_IN_PREVIEW, readonly: true })
-    protected _key: pTS.languages.TKey = '' as pTS.languages.TKey;
+    @property({})
+    space: string = " ";
 
-    @property({ type: pTS.languages.EKey, visible() { return this.isUpdateKey } })
-    get key() { return this._key }
-    set key(x) { this._key = x }
+    @property({ type: _LangKey, visible() { return this.isUpdateKey }  })
+    keys: _LangKey[] = [];
 
     protected _ensure() {
         if(!this._hooker) {
@@ -45,9 +81,18 @@ export class Language_SmartKey extends Component {
     protected _actUpdateKey() {
         if(!this.isUpdateKey) return;
 
-        instance(Language_Manager).get(this.key).then(_ => 
-            this._hooker.string = _
-        )
+        this._hooker.string = "";
+        Promise.all(this.keys.map(_ => _.get())).then(_lang => {
+            console.log("Lang: ", _lang)
+            for(let i = 0; i < _lang.length; i ++) {
+                const _str = _lang[i];
+                this._hooker.string += _str;
+
+                if(i != _lang.length - 1) {
+                    this._hooker.string += this.space;
+                }
+            }
+        })
     }
 
     protected _actUpdateTTF() {
