@@ -1,5 +1,4 @@
 import { _decorator, CCClass, CCString, js, Label, TTFFont } from 'cc';
-import { Smart_Limiter } from 'db://pts-core/scripts/Components/Smart/Smart.Limiter';
 import { pClass } from 'db://pts-core/scripts/utils'
 import { Enums_EFontExtra, Enums_EFontType } from '../Enums/Enums.FontType';
 import { Config_Smart } from 'db://pts-core/scripts/Components/Config/Config.Smart';
@@ -101,7 +100,6 @@ class _Config {
 @ccclass('Config_GlobalTTF')
 @menu('pts-language/Config/GlobalTTF')
 @singleton()
-@requireComponent(Smart_Limiter)
 export class Config_GlobalTTF extends Config_Smart<_Config> {
     protected _filter: pClass.ETypes = 'NoneComponent';
     protected _type: string = 'Config_GlobalTTF_Config';
