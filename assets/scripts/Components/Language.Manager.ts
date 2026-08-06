@@ -14,8 +14,8 @@ type _TMap = Record<pTS.languages.TLang, Record<pTS.languages.TLang, string>>;
 @singleton()
 @editor_ccclass('Language_Manager')
 export class Language_Manager {
-    protected _driver: pDriver.Handler<_TEvent> = new pDriver.Handler;
-    get driver() { return this._driver }
+    private _$driver: pDriver.Handler<_TEvent> = new pDriver.Handler;
+    get driver() { return this._$driver }
 
     async get(key: string) {
         await this.load();
@@ -27,10 +27,13 @@ export class Language_Manager {
 
     @editor_property()
     protected _$country: pTS.languages.TLang = 'en';
-    protected _$map: _TMap = js.createMap(true);
-    protected _$promise: Promise<_TMap> = null
+    get country() { return this._$country }
+
     @editor_property()
     protected get _$is_resolved() { return Boolean(this._$promise) }
+
+    protected _$map: _TMap = js.createMap(true);
+    protected _$promise: Promise<_TMap> = null
 
     load() {
         if(!!this._$promise) return this._$promise;
