@@ -123,5 +123,4 @@ export class Config_GlobalTTF extends Config_Smart<_Config> {
     protected _onPreLoad(): void {
         this.get()?.init();
     }
-
 }
