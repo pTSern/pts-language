@@ -91,7 +91,6 @@ export class Language_SmartKey extends Component {
 
         this._hooker.string = "";
         Promise.all(this.keys.map(_ => _.get())).then(_lang => {
-            console.log("Lang: ", _lang);
             for(let i = 0; i < _lang.length; i ++) {
                 const _str = _lang[i];
                 this._hooker.string += _str;
