@@ -1,9 +1,9 @@
 declare namespace pTS {
     export namespace languages {
         const _$langs = ["en", "vi"] as const;
-        export type TLang = typeof _$langs[number];
-        const _$keys = ["get", "reward", "double", "daily"] as const;
-        export type TKey = typeof _$keys[number];
+        export type ELang = typeof _$langs[number];
+        const _$keys = ["get", "reward", "double", "daily", "areas", "room", "shop", "home", "jigsaw", "rank"] as const;
+        export type EKey = typeof _$keys[number];
         export const path: string;
         export const ELang: Record<string, string>;
         export const EKey: Record<string, string>;

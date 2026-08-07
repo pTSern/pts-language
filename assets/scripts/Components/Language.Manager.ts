@@ -9,7 +9,7 @@ type _TEvent = {
     onCountryChanged: pFlex.TFunc<[string, string], void>
 }
 
-type _TMap = Record<pTS.languages.TLang, Record<pTS.languages.TLang, string>>;
+type _TMap = Record<pTS.languages.ELang, Record<pTS.languages.ELang, string>>;
 
 @singleton()
 @editor_ccclass('Language_Manager')
@@ -17,7 +17,7 @@ export class Language_Manager {
     private _$driver: pDriver.Handler<_TEvent> = new pDriver.Handler;
     get driver() { return this._$driver }
 
-    async get(key: string) {
+    async get(key: string): Promise<string> {
         await this.load();
 
         const _json = this._$map[this._$country];
@@ -26,7 +26,7 @@ export class Language_Manager {
     }
 
     @editor_property()
-    protected _$country: pTS.languages.TLang = 'en';
+    protected _$country: pTS.languages.ELang = 'en';
     get country() { return this._$country }
 
     @editor_property()
@@ -58,7 +58,7 @@ export class Language_Manager {
         return this._$promise;
     }
 
-    change(country: pTS.languages.TLang) {
+    change(country: pTS.languages.ELang) {
         if(!pTS.languages.has(country)) return;
         this._$country = country;
     }

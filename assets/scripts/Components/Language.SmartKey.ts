@@ -25,7 +25,7 @@ class _LangKey {
     prefix: string = ""
 
     @property({ visible: pConst.EDITOR_ONLY_IN_PREVIEW, readonly: true })
-    protected _key = '' as pTS.languages.TKey
+    protected _key = '' as pTS.languages.EKey
 
     @property({ type: pTS.languages.EKey })
     get key() { return this._key }
@@ -37,7 +37,6 @@ class _LangKey {
     async get() {
         const _out = await instance(Language_Manager).get(this.key);
         const _str = this.prefix + _out + this.suffix;
-        console.log("LangKey: ", this.key, _out, _str);
 
         switch(this.mode) {
             case _EMode.Pascal: return pString.pascal(_str)

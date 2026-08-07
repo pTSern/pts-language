@@ -298,9 +298,9 @@ async function _generate(jsonDir: { db: string; physic: string; project: string 
     let _dts = `declare namespace pTS {\n`;
     _dts += `    export namespace languages {\n`;
     _dts += `        const _$langs = [${langKeys.map(k => `"${k}"`).join(', ')}] as const;\n`;
-    _dts += `        export type TLang = typeof _$langs[number];\n`;
+    _dts += `        export type ELang = typeof _$langs[number];\n`;
     _dts += `        const _$keys = [${validKeys.map(k => `"${k}"`).join(', ')}] as const;\n`;
-    _dts += `        export type TKey = typeof _$keys[number];\n`;
+    _dts += `        export type EKey = typeof _$keys[number];\n`;
     _dts += `        export const path: string;\n`;
     _dts += `        export const ELang: Record<string, string>;\n`;
     _dts += `        export const EKey: Record<string, string>;\n`;
