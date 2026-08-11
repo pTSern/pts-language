@@ -1,8 +1,8 @@
-import { _decorator, Component, Enum, Label } from 'cc';
-import { instance } from 'db://pts-core/scripts/utils/pClass';
+import { _decorator, Component, Enum, JsonAsset, Label } from 'cc';
+import { editor_property, instance } from 'db://pts-core/scripts/utils/pClass';
 import { Config_GlobalTTF } from '../Config/Config.GlobalTTF';
 import { Language_Manager } from './Language.Manager';
-import { pConst, pString } from 'db://pts-core/scripts/utils';
+import { pConst, pEngine, pString } from 'db://pts-core/scripts/utils';
 import { Enums_EFontExtra, Enums_EFontType } from '../Enums/Enums.FontType';
 
 const { ccclass, property, requireComponent, menu } = _decorator;
@@ -15,6 +15,28 @@ enum _EMode {
 }
 
 Enum(_EMode);
+
+@ccclass("Language_SmartKey._Param")
+class _Json {
+    @property({  })
+    prefix: string = "";
+
+    @property({ type: JsonAsset })
+    param: JsonAsset = null;
+
+    @editor_property(undefined, { kill: true })
+    protected get __$see() {
+        return pEngine.Json.param.previewer(this.param);
+    }
+
+    @property({  })
+    suffix: string = "";
+
+    get() {
+        if(!this.param) return "";
+        return `${this.prefix}${pEngine.Json.param.get(this.param)}${this.suffix}`;
+    }
+}
 
 @ccclass("Language_SmartKey_LangKey")
 class _LangKey {
@@ -34,9 +56,12 @@ class _LangKey {
     @property({ })
     suffix: string = ""
 
+    @property({ type: _Json })
+    params: _Json[] = [];
+
     async get() {
         const _out = await instance(Language_Manager).get(this.key);
-        const _str = this.prefix + _out + this.suffix;
+        const _str = this.prefix + _out + this.suffix + this.params.map(_ => _.get()).join("");
 
         switch(this.mode) {
             case _EMode.Pascal: return pString.pascal(_str)
