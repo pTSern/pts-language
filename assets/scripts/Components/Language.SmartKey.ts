@@ -1,20 +1,11 @@
-import { _decorator, Component, Enum, JsonAsset, Label } from 'cc';
+import { _decorator, Component, JsonAsset, Label } from 'cc';
 import { editor_property, instance } from 'db://pts-core/scripts/utils/pClass';
 import { Config_GlobalTTF } from '../Config/Config.GlobalTTF';
 import { Language_Manager } from './Language.Manager';
-import { pConst, pEngine, pString } from 'db://pts-core/scripts/utils';
+import { pConst, pEngine } from 'db://pts-core/scripts/utils';
 import { Enums_EFontExtra, Enums_EFontType } from '../Enums/Enums.FontType';
 
 const { ccclass, property, requireComponent, menu } = _decorator;
-
-enum _EMode {
-    Normal = 0,
-    Pascal,
-    Upper,
-    Lower
-}
-
-Enum(_EMode);
 
 @ccclass("Language_SmartKey._Param")
 class _Json {
@@ -40,8 +31,8 @@ class _Json {
 
 @ccclass("Language_SmartKey_LangKey")
 class _LangKey {
-    @property({ type: _EMode })
-    mode: _EMode = _EMode.Pascal;
+    @property({ type: Language_Manager.EMode })
+    mode: Language_Manager.EMode = Language_Manager.EMode.Pascal;
 
     @property({ })
     prefix: string = ""
@@ -59,17 +50,14 @@ class _LangKey {
     @property({ type: _Json })
     params: _Json[] = [];
 
-    async get() {
-        const _out = await instance(Language_Manager).get(this.key);
-        const _str = this.prefix + _out + this.suffix + this.params.map(_ => _.get()).join("");
-
-        switch(this.mode) {
-            case _EMode.Pascal: return pString.pascal(_str)
-            case _EMode.Upper: return _str.toUpperCase()
-            case _EMode.Lower: return _str.toLowerCase()
-        }
-
-        return _str;
+    get() {
+        return instance(Language_Manager).get({
+            key: this.key,
+            prefix: this.prefix,
+            suffix: this.suffix,
+            mode: this.mode,
+            handler: _ => _ + this.params.map(_str => _str.get()).join("")
+        });
     }
 }
 
@@ -134,5 +122,8 @@ export class Language_SmartKey extends Component {
         this.hooker.font = _config.font(this.font, this.extra);
         this.hooker.useSystemFont = false;
     }
+}
 
+export namespace Language_SmartKey {
+    export const Helper = _LangKey
 }

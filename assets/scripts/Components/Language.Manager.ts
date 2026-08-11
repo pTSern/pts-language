@@ -1,6 +1,6 @@
-import { assetManager, director, DirectorEvent, js, JsonAsset } from 'cc';
+import { assetManager, director, DirectorEvent, Enum, js, JsonAsset } from 'cc';
 import { COCOS_RUNTIME } from 'cc/env';
-import { pClass, pConst, pDriver } from 'db://pts-core/scripts/utils';
+import { pArray, pClass, pConst, pDriver, pString } from 'db://pts-core/scripts/utils';
 import { instance } from 'db://pts-core/scripts/utils/pClass';
 
 const { singleton, editor_ccclass, editor_property } = pClass
@@ -11,19 +11,33 @@ type _TEvent = {
 
 type _TMap = Record<pTS.languages.ELang, Record<pTS.languages.ELang, string>>;
 
+enum _EMode {
+    Normal = 0,
+    Pascal,
+    Upper,
+    Lower
+}
+
+Enum(_EMode);
+
+interface _ISetOpt {
+    prefix?: string
+    suffix?: string
+    mode?: _EMode
+    key: pTS.languages.EKey
+    replacer?: pString.IStringReplacer[];
+    handler?: pFlex.TFunc<[string], string>
+}
+
+type _TSetOpt = _ISetOpt | pTS.languages.EKey
+
 @singleton()
 @editor_ccclass('Language_Manager')
 export class Language_Manager {
     private _$driver: pDriver.Handler<_TEvent> = new pDriver.Handler;
     get driver() { return this._$driver }
 
-    async get(key: string): Promise<string> {
-        await this.load();
 
-        const _json = this._$map[this._$country];
-        if(!_json) return "[NONE]"
-        return _json[key];
-    }
 
     @editor_property()
     protected _$country: pTS.languages.ELang = 'en';
@@ -58,10 +72,53 @@ export class Language_Manager {
         return this._$promise;
     }
 
+    protected _get(_opt: _TSetOpt) {
+        const _json = this._$map[this._$country];
+
+        const { mode = _EMode.Pascal, key, replacer, handler, prefix, suffix } = typeof _opt === 'string' ? { key: _opt } : _opt;
+        let _str: string = _json?.[key] || key;
+        console.log(`[Language_Manager] >> Get: ${key} => ${_str} (${this._$country})`);
+
+        switch(mode) {
+            case _EMode.Pascal: [_str] =  pString.pascal(_str); break;
+            case _EMode.Upper: _str = _str.toUpperCase(); break;
+            case _EMode.Lower: _str = _str.toLowerCase(); break;
+        }
+
+        _str = `${prefix||""}${pString.replace(_str, replacer)}${suffix||""}`;
+        if(handler) _str = handler(_str);
+        return _str
+    }
+
+    async get(_opt: _TSetOpt) {
+        await this.load();
+
+        return this._get(_opt);
+    }
+
+    async gets(opt: pFlex.TArray<_TSetOpt>, ...opts: _TSetOpt[]): Promise<Record<pTS.languages.EKey, string>> {
+        await this.load();
+        opts = pArray.flat(opt, opts);
+
+        const _out = js.createMap(true) as Record<pTS.languages.EKey, string>;
+
+        for(const _opt of opts) {
+            _out[typeof _opt === 'string' ? _opt : _opt.key] = this._get(_opt);
+        }
+
+        return _out;
+    }
+
     change(country: pTS.languages.ELang) {
         if(!pTS.languages.has(country)) return;
         this._$country = country;
     }
+}
+
+export namespace Language_Manager {
+    export const EMode = _EMode;
+    export type EMode = _EMode;
+    export type TSetOpt = _TSetOpt;
 }
 
 (pConst.EDITOR_ONLY_IN_PREVIEW || COCOS_RUNTIME) && director.once(DirectorEvent.BEFORE_SCENE_LAUNCH, () => 
