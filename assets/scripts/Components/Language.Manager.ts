@@ -1,4 +1,4 @@
-import { assetManager, director, DirectorEvent, Enum, js, JsonAsset } from 'cc';
+import { assetManager, director, DirectorEvent, Enum, js, JsonAsset, Label, RichText } from 'cc';
 import { COCOS_RUNTIME } from 'cc/env';
 import { pArray, pClass, pConst, pDriver, pString } from 'db://pts-core/scripts/utils';
 import { instance } from 'db://pts-core/scripts/utils/pClass';
@@ -27,6 +27,7 @@ interface _ISetOpt {
     key: pTS.languages.EKey
     replacer?: pString.IStringReplacer[];
     handler?: pFlex.TFunc<[string], string>
+    targets?: pFlex.TArray<Label | RichText>
 }
 
 type _TSetOpt = _ISetOpt | pTS.languages.EKey
@@ -36,8 +37,6 @@ type _TSetOpt = _ISetOpt | pTS.languages.EKey
 export class Language_Manager {
     private _$driver: pDriver.Handler<_TEvent> = new pDriver.Handler;
     get driver() { return this._$driver }
-
-
 
     @editor_property()
     protected _$country: pTS.languages.ELang = 'en';
@@ -75,9 +74,8 @@ export class Language_Manager {
     protected _get(_opt: _TSetOpt) {
         const _json = this._$map[this._$country];
 
-        const { mode = _EMode.Pascal, key, replacer, handler, prefix, suffix } = typeof _opt === 'string' ? { key: _opt } : _opt;
+        const { mode = _EMode.Pascal, key, replacer, handler, prefix, suffix, targets } = typeof _opt === 'string' ? { key: _opt } : _opt;
         let _str: string = _json?.[key] || key;
-        console.log(`[Language_Manager] >> Get: ${key} => ${_str} (${this._$country})`);
 
         switch(mode) {
             case _EMode.Pascal: [_str] =  pString.pascal(_str); break;
@@ -87,6 +85,7 @@ export class Language_Manager {
 
         _str = `${prefix||""}${pString.replace(_str, replacer)}${suffix||""}`;
         if(handler) _str = handler(_str);
+        targets && pArray.flatter(targets).forEach(_ => _.string = _str);
         return _str
     }
 

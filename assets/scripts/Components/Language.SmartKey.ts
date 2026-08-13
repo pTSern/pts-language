@@ -88,6 +88,8 @@ export class Language_SmartKey extends Component {
     @property({ type: _LangKey, visible() { return this.isUpdateKey }  })
     keys: _LangKey[] = [];
 
+    @editor_property()
+    protected _isUpdating: boolean = false;
     protected _ensure() {
         if(!this._hooker) {
             this._hooker = this.getComponent(Label);
@@ -101,6 +103,8 @@ export class Language_SmartKey extends Component {
 
     protected _actUpdateKey() {
         if(!this.isUpdateKey) return;
+        if(this._isUpdating) return;
+        this._isUpdating = true;
 
         this._hooker.string = "";
         Promise.all(this.keys.map(_ => _.get())).then(_lang => {
@@ -112,7 +116,7 @@ export class Language_SmartKey extends Component {
                     this._hooker.string += this.space;
                 }
             }
-        })
+        }).finally(() => { this._isUpdating = false })
     }
 
     protected _actUpdateTTF() {
