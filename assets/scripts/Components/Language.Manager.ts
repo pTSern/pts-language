@@ -108,6 +108,18 @@ export class Language_Manager {
         return _out;
     }
 
+    async sgets(opt: pFlex.TArray<_TSetOpt>, ...opts: _TSetOpt[]) {
+        await this.load();
+        opts = pArray.flat(opt, opts);
+
+        let _out = '';
+        for(const _opt of opts) {
+            _out += this._get(_opt);
+        }
+
+        return _out;
+    }
+
     change(country: pTS.languages.ELang) {
         if(!pTS.languages.has(country)) return;
         this._$country = country;
