@@ -149,6 +149,7 @@ export namespace Language_Manager {
     export const EMode = _EMode;
     export type EMode = _EMode;
     export type TSetOpt = _TSetOpt;
+    export type ISetOpt = _ISetOpt;
 }
 
 (pConst.EDITOR_ONLY_IN_PREVIEW || COCOS_RUNTIME) && director.once(DirectorEvent.BEFORE_SCENE_LAUNCH, () => 
