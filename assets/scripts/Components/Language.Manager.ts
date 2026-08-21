@@ -20,12 +20,18 @@ enum _EMode {
 
 Enum(_EMode);
 
+interface _IReplacer {
+    find: string;
+    replacer: string | _ISetOpt;
+    time?: number;
+}
+
 interface _ISetOpt {
     prefix?: string
     suffix?: string
     mode?: _EMode
     key: pTS.languages.EKey
-    replacer?: pString.IStringReplacer[];
+    replacer?: _IReplacer[];
     handler?: pFlex.TFunc<[string], string>
     targets?: pFlex.TArray<Label | RichText>
 }
@@ -71,6 +77,19 @@ export class Language_Manager {
         return this._$promise;
     }
 
+    protected _replace(root: string, all: pFlex.TArray<_IReplacer>): string {
+        all = pArray.flatter(all);
+        return all.reduce((result, { find, replacer, time = 0 }) => {
+            const _replacer = typeof replacer === 'string' ? replacer : this._get(replacer);
+            if (time > 0) {
+                for (let i = 0; i < time; i++) result = result.replace(find, _replacer);
+            } else {
+                result = result.replace(new RegExp(find, 'g'), _replacer);
+            }
+            return result;
+        }, String(root));
+    }
+
     protected _get(_opt: _TSetOpt) {
         const _json = this._$map[this._$country];
 
@@ -83,7 +102,7 @@ export class Language_Manager {
             case _EMode.Lower: _str = _str.toLowerCase(); break;
         }
 
-        _str = `${prefix||""}${pString.replace(_str, replacer)}${suffix||""}`;
+        _str = `${prefix||""}${this._replace(_str, replacer)}${suffix||""}`;
         if(handler) _str = handler(_str);
         targets && pArray.flatter(targets).forEach(_ => _.string = _str);
         return _str

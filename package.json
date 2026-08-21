@@ -120,8 +120,8 @@
         },
         "menu": [
             {
-                "path": "i18n:pts-language.panel",
-                "label": "Language Manager",
+                "path": "i18n:menu.extension/pTS Language",
+                "label": "Open Panel",
                 "message": "open-panel"
             }
         ]
