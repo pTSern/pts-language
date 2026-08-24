@@ -150,6 +150,7 @@ export namespace Language_Manager {
     export type EMode = _EMode;
     export type TSetOpt = _TSetOpt;
     export type ISetOpt = _ISetOpt;
+    export type TKey = pTS.languages.EKey;
 }
 
 (pConst.EDITOR_ONLY_IN_PREVIEW || COCOS_RUNTIME) && director.once(DirectorEvent.BEFORE_SCENE_LAUNCH, () => 
