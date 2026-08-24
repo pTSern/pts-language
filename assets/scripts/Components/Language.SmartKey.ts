@@ -1,65 +1,12 @@
-import { _decorator, Component, JsonAsset, Label } from 'cc';
+import { _decorator, Component, JsonAsset, Label, } from 'cc';
 import { editor_property, instance } from 'db://pts-core/scripts/utils/pClass';
 import { Config_GlobalTTF } from '../Config/Config.GlobalTTF';
 import { Language_Manager } from './Language.Manager';
 import { pConst, pEngine } from 'db://pts-core/scripts/utils';
 import { Enums_EFontExtra, Enums_EFontType } from '../Enums/Enums.FontType';
+import { LangKey } from './Language.LangKey';
 
 const { ccclass, property, requireComponent, menu } = _decorator;
-
-@ccclass("Language_SmartKey._Param")
-class _Json {
-    @property({  })
-    prefix: string = "";
-
-    @property({ type: JsonAsset })
-    param: JsonAsset = null;
-
-    @editor_property(undefined, { kill: true })
-    protected get __$see() {
-        return pEngine.Json.param.previewer(this.param);
-    }
-
-    @property({  })
-    suffix: string = "";
-
-    get() {
-        if(!this.param) return "";
-        return `${this.prefix}${pEngine.Json.param.get(this.param)}${this.suffix}`;
-    }
-}
-
-@ccclass("Language_SmartKey_LangKey")
-class _LangKey {
-    @property({ type: Language_Manager.EMode })
-    mode: Language_Manager.EMode = Language_Manager.EMode.Pascal;
-
-    @property({ })
-    prefix: string = ""
-
-    @property({ visible: pConst.EDITOR_ONLY_IN_PREVIEW, readonly: true })
-    protected _key = '' as pTS.languages.EKey
-
-    @property({ type: pTS.languages.EKey })
-    get key() { return this._key }
-    set key(x) { this._key = x }
-
-    @property({ })
-    suffix: string = ""
-
-    @property({ type: _Json })
-    params: _Json[] = [];
-
-    get() {
-        return instance(Language_Manager).get({
-            key: this.key,
-            prefix: this.prefix,
-            suffix: this.suffix,
-            mode: this.mode,
-            handler: _ => _ + this.params.map(_str => _str.get()).join("")
-        });
-    }
-}
 
 @ccclass('Language_SmartKey')
 @menu('pts-language/Language/SmartKey')
@@ -69,7 +16,13 @@ export class Language_SmartKey extends Component {
     protected _hooker: Label = null
     @property({ type: Label })
     get hooker() { this._ensure(); return this._hooker }
-    set hooker(x) { if(!x) { this._ensure(); return; } this._hooker = x }
+    set hooker(x) {
+        if(!x) {
+            this._ensure();
+            return; 
+        }
+        this._hooker = x 
+    }
 
     @property({ type: Enums_EFontType })
     font: Enums_EFontType = Enums_EFontType.Regular;
@@ -85,8 +38,8 @@ export class Language_SmartKey extends Component {
     @property({ visible() { return this.isUpdateKey } })
     space: string = " ";
 
-    @property({ type: _LangKey, visible() { return this.isUpdateKey }  })
-    keys: _LangKey[] = [];
+    @property({ type: LangKey, visible() { return this.isUpdateKey }  })
+    keys: LangKey[] = [];
 
     @editor_property()
     protected _isUpdating: boolean = false;
@@ -129,5 +82,5 @@ export class Language_SmartKey extends Component {
 }
 
 export namespace Language_SmartKey {
-    export const Helper = _LangKey
+    export const Helper = LangKey
 }
