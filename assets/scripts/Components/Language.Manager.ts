@@ -153,7 +153,7 @@ export namespace Language_Manager {
     export type TKey = pTS.languages.EKey;
 }
 
-(pConst.EDITOR_ONLY_IN_PREVIEW || COCOS_RUNTIME) && director.once(DirectorEvent.BEFORE_SCENE_LAUNCH, () => 
-    instance(Language_Manager).load()
-)
+(pConst.EDITOR_ONLY_IN_PREVIEW || COCOS_RUNTIME) && director.once(DirectorEvent.BEFORE_SCENE_LAUNCH, () => {
+    instance(Language_Manager).load();
+})
 
