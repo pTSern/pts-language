@@ -4,6 +4,7 @@ import { pConst } from 'db://pts-core/scripts/utils';
 import { LangKey } from './Language.LangKey';
 import { editor_property, instance } from 'db://pts-core/scripts/utils/pClass';
 import { Config_GlobalTTF } from '../Config/Config.GlobalTTF';
+import { EDITOR } from 'cc/env';
 
 const { ccclass, property } = _decorator;
 
@@ -11,18 +12,58 @@ const { ccclass, property } = _decorator;
 export class Language_SmartRichText extends RichText {
     @property({ group: pConst.GROUPS.CORE, override: true })
     get string() { return super.string }
-    set string(x) { super.string = x }
+    set string (value) {
+        if (this._string === value) {
+            return;
+        }
+
+        this._string = value;
+        this._updateRichTextStatus();
+    }
 
     @property({ group: pConst.GROUPS.CORE, override: true })
-    set horizontalAlign(value) { super.horizontalAlign = value }
+    set horizontalAlign (value) {
+        if (this.horizontalAlign === value) {
+            return;
+        }
+
+        this._horizontalAlign = value;
+        this._layoutDirty = true;
+        this._updateRichTextStatus();
+    }
     get horizontalAlign() { return super.horizontalAlign }
 
     @property({ group: pConst.GROUPS.CORE, override: true })
-    set verticalAlign(value) { super.verticalAlign = value }
+    set verticalAlign (value) {
+        if (this._verticalAlign === value) {
+            return;
+        }
+
+        this._verticalAlign = value;
+        this._layoutDirty = true;
+        this._updateRichTextStatus();
+    }
     get verticalAlign() { return super.verticalAlign }
 
     @property({ group: pConst.GROUPS.CORE, override: true, visible: false })
-    set useSystemFont(value: boolean) { super.useSystemFont = value }
+    set useSystemFont (value: boolean) {
+        if (this._isSystemFontUsed === value) {
+            return;
+        }
+        this._isSystemFontUsed = value;
+
+        if (EDITOR) {
+            if (value) {
+                this._font = null;
+            } else if (this._userDefinedFont) {
+                this._font = this._userDefinedFont;
+                return;
+            }
+        }
+
+        this._layoutDirty = true;
+        this._updateRichTextStatus();
+    }
     get useSystemFont(): boolean { return super.useSystemFont }
 
     @property({ group: pConst.GROUPS.CORE, override: true })
@@ -40,7 +81,21 @@ export class Language_SmartRichText extends RichText {
     @property({ group: pConst.GROUPS.CORE, override: true, visible: false })
     get font(): TTFFont { return super.font }
     set font(value: TTFFont) {
-        super.font = value
+        if (this._font === value) {
+            return;
+        }
+        this._font = value;
+        this._layoutDirty = true;
+        if (this._font) {
+            if (EDITOR) {
+                this._userDefinedFont = this._font;
+            }
+            this.useSystemFont = false;
+            this._onTTFLoaded();
+        } else {
+            this.useSystemFont = true;
+        }
+        this._updateRichTextStatus();
     }
 
     @property({ type: Enums_EFontType, displayName: "Font Type", group: pConst.GROUPS.CORE })
@@ -50,39 +105,77 @@ export class Language_SmartRichText extends RichText {
     extra: Enums_EFontExtra = Enums_EFontExtra.None;
 
     @property({ group: pConst.GROUPS.CORE, override: true, visible: false })
-    set fontFamily(value: string) { super.fontFamily = value }
-    get fontFamily(): string {
-        return super.fontFamily
+    get fontFamily(): string { return super.fontFamily }
+    set fontFamily(value: string) {
+        if (this._fontFamily === value) return;
+        this._fontFamily = value;
+        this._layoutDirty = true;
+        this._updateRichTextStatus();
     }
 
-    @property({ group: pConst.GROUPS.CORE, override: true })
-    set cacheMode(value: CacheMode) { super.cacheMode = value }
-    get cacheMode(): CacheMode {
-        return super.cacheMode
-    }
 
     @property({ group: pConst.GROUPS.CORE, override: true })
-    get maxWidth(): number { return super.maxWidth }
-    set maxWidth(value: number) {
-        super.maxWidth = value
+    get cacheMode(): CacheMode { return super.cacheMode }
+    set cacheMode(value: CacheMode) {
+        if (this._cacheMode === value) {
+            return;
+        }
+        this._cacheMode = value;
+        this._updateRichTextStatus();
+    }
+
+
+    @property({ group: pConst.GROUPS.CORE, override: true })
+    get maxWidth (): number { return super.maxWidth }
+    set maxWidth (value) {
+        if (this._maxWidth === value) {
+            return;
+        }
+
+        this._maxWidth = value;
+        this._layoutDirty = true;
+        this._updateRichTextStatus();
     }
 
     @property({ group: pConst.GROUPS.CORE, override: true })
     get lineHeight(): number { return super.lineHeight }
-    set lineHeight(value: number) {
-        super.lineHeight = value
+    set lineHeight (value) {
+        if (this._lineHeight === value) {
+            return;
+        }
+
+        this._lineHeight = value;
+        this._layoutDirty = true;
+        this._updateRichTextStatus();
     }
 
     @property({ group: pConst.GROUPS.CORE, override: true })
     get imageAtlas(): SpriteAtlas { return super.imageAtlas }
-    set imageAtlas(value: SpriteAtlas) {
-        super.imageAtlas = value
+    set imageAtlas (value) {
+        if (this._imageAtlas === value) {
+            return;
+        }
+
+        this._imageAtlas = value;
+        this._layoutDirty = true;
+        this._updateRichTextStatus();
     }
 
     @property({ group: pConst.GROUPS.CORE, override: true })
     get handleTouchEvent(): boolean { return super.handleTouchEvent }
-    set handleTouchEvent(value: boolean) {
-        super.handleTouchEvent = value
+    set handleTouchEvent (value) {
+        if (this._handleTouchEvent === value) {
+            return;
+        }
+
+        this._handleTouchEvent = value;
+        if (this.enabledInHierarchy) {
+            if (this.handleTouchEvent) {
+                this._addEventListeners();
+            } else {
+                this._removeEventListeners();
+            }
+        }
     }
 
     @property({ tooltip: "If true -> Auto select the font base on the setting of the target.\nExample `bold` -> lookup for `bold` font.", group: pConst.GROUPS.CORE })
