@@ -1,8 +1,6 @@
-import { _decorator, Component, JsonAsset, Label, } from 'cc';
+import { _decorator, Component, Label } from 'cc';
 import { editor_property, instance } from 'db://pts-core/scripts/utils/pClass';
 import { Config_GlobalTTF } from '../Config/Config.GlobalTTF';
-import { Language_Manager } from './Language.Manager';
-import { pConst, pEngine } from 'db://pts-core/scripts/utils';
 import { Enums_EFontExtra, Enums_EFontType } from '../Enums/Enums.FontType';
 import { LangKey } from './Language.LangKey';
 

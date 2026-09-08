@@ -1,5 +1,6 @@
 import { _decorator, JsonAsset } from "cc";
-import { pConst, pEngine } from "db://pts-core/scripts/utils";
+import * as pConst from "db://pts-core/scripts/utils/pConst";
+import * as pEngine from "db://pts-core/scripts/utils/pEngine";
 import { editor_property, instance } from "db://pts-core/scripts/utils/pClass";
 import { Language_Manager } from "./Language.Manager";
 
@@ -35,7 +36,7 @@ export class LangKey {
     @property({ })
     prefix: string = ""
 
-    @property({ visible: pConst.EDITOR_ONLY_IN_PREVIEW, readonly: true })
+    @property({ visible() { return !!pConst?.EDITOR_ONLY_IN_PREVIEW; }, readonly: true })
     protected _key = '' as pTS.languages.EKey
 
     @property({ type: pTS.languages.EKey })
