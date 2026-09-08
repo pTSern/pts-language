@@ -3,8 +3,8 @@ import { Enums_EFontExtra, Enums_EFontType } from '../Enums/Enums.FontType';
 import * as pConst from 'db://pts-core/scripts/utils/pConst';
 import { LangKey } from './Language.LangKey';
 import { editor_property, instance } from 'db://pts-core/scripts/utils/pClass';
-import { Config_GlobalTTF } from '../Config/Config.GlobalTTF';
 import { EDITOR } from 'cc/env';
+import { pTSAsset_TTFConfig } from '../pTSAssets/pTSAsset.TTFConfig';
 
 const { ccclass, property } = _decorator;
 const CORE_GROUP = pConst?.GROUPS?.CORE || { name: 'Core', id: '9', displayOrder: 1000 };
@@ -191,6 +191,16 @@ export class Language_SmartRichText extends RichText {
     @property({ type: LangKey, visible() { return this.isUpdateKey }, group: CORE_GROUP })
     keys: LangKey[] = [];
 
+    @property({ type: pTSAsset_TTFConfig, visible: true })
+    protected _config: pTSAsset_TTFConfig = null;
+
+    get config() {
+        if(!this._config) {
+            this._config = instance(pTSAsset_TTFConfig);
+        }
+        return this._config;
+    }
+
     @editor_property()
     protected _isUpdating: boolean = false;
 
@@ -219,10 +229,7 @@ export class Language_SmartRichText extends RichText {
     }
 
     protected _actUpdateTTF() {
-        const _config = instance(Config_GlobalTTF);
-        if(!_config) return;
-
-        this.font = _config.font(this.tfont, this.extra);
+        this.font = this.config.font(this.tfont, this.extra);
         this.useSystemFont = false;
     }
 }

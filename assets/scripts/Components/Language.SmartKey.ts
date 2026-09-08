@@ -1,8 +1,8 @@
 import { _decorator, Component, Label } from 'cc';
 import { editor_property, instance } from 'db://pts-core/scripts/utils/pClass';
-import { Config_GlobalTTF } from '../Config/Config.GlobalTTF';
 import { Enums_EFontExtra, Enums_EFontType } from '../Enums/Enums.FontType';
 import { LangKey } from './Language.LangKey';
+import { pTSAsset_TTFConfig } from '../pTSAssets/pTSAsset.TTFConfig';
 
 const { ccclass, property, requireComponent, menu } = _decorator;
 
@@ -26,6 +26,16 @@ export class Language_SmartKey extends Component {
     font: Enums_EFontType = Enums_EFontType.Regular;
     @property({ type: Enums_EFontExtra })
     extra: Enums_EFontExtra = Enums_EFontExtra.None;
+
+    @property({ type: pTSAsset_TTFConfig, visible: true })
+    protected _config: pTSAsset_TTFConfig = null;
+
+    get config() {
+        if(!this._config) {
+            this._config = instance(pTSAsset_TTFConfig);
+        }
+        return this._config;
+    }
 
     @property({ tooltip: "If true -> Auto select the font base on the setting of the target.\nExample `bold` -> lookup for `bold` font." })
     smart: boolean = true;
@@ -71,10 +81,10 @@ export class Language_SmartKey extends Component {
     }
 
     protected _actUpdateTTF() {
-        const _config = instance(Config_GlobalTTF);
-        if(!_config) return;
+        const _out = this.config.font(this.font, this.extra);
+        this.hooker.font = _out;
 
-        this.hooker.font = _config.font(this.font, this.extra);
+        console.log(`Set font for >>`, _out);
         this.hooker.useSystemFont = false;
     }
 }
