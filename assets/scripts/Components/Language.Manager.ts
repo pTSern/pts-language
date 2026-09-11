@@ -27,6 +27,7 @@ interface _IReplacer {
 }
 
 interface _ISetOpt {
+    sync?: false
     prefix?: string
     suffix?: string
     mode?: _EMode
@@ -36,7 +37,19 @@ interface _ISetOpt {
     targets?: pFlex.TArray<Label | RichText>
 }
 
-type _TSetOpt = _ISetOpt | pTS.languages.EKey
+interface _IAsyncSetOpt {
+    sync: true
+    handler?: pFlex.TFunc<[string], Promise<string>>
+    prefix?: string
+    suffix?: string
+    mode?: _EMode
+    key: pTS.languages.EKey
+    replacer?: _IReplacer[];
+    targets?: pFlex.TArray<Label | RichText>
+}
+
+
+type _TSetOpt = _IAsyncSetOpt | _ISetOpt | pTS.languages.EKey
 
 @singleton()
 @editor_ccclass('Language_Manager')
@@ -77,23 +90,25 @@ export class Language_Manager {
         return this._$promise;
     }
 
-    protected _replace(root: string, all: pFlex.TArray<_IReplacer>): string {
+    protected async _replace(root: string, all: pFlex.TArray<_IReplacer>) {
         all = pArray.flatter(all);
-        return all.reduce((result, { find, replacer, time = 0 }) => {
-            const _replacer = typeof replacer === 'string' ? replacer : this._get(replacer);
-            if (time > 0) {
-                for (let i = 0; i < time; i++) result = result.replace(find, _replacer);
+
+        for(let i = 0; i < all.length; i++) {
+            const { replacer, time, find } = all[i];
+            const _replacer = typeof replacer === 'string' ? replacer : await this._get(replacer);
+            if(time > 0) {
+                for (let j = 0; j < time; j++) root = root.replace(find, _replacer);
             } else {
-                result = result.replace(new RegExp(find, 'g'), _replacer);
+                root = root.replace(new RegExp(find, 'g'), _replacer);
             }
-            return result;
-        }, String(root));
+        }
+        return root;
     }
 
-    protected _get(_opt: _TSetOpt) {
+    protected async _get(_opt: _TSetOpt) {
         const _json = this._$map[this._$country];
 
-        const { mode = _EMode.Pascal, key, replacer, handler, prefix, suffix, targets } = typeof _opt === 'string' ? { key: _opt } : _opt;
+        const { mode = _EMode.Pascal, key, replacer, handler, prefix, suffix, targets, sync = false } = typeof _opt === 'string' ? { key: _opt } : _opt;
         let _str: string = _json?.[key] || key;
 
         switch(mode) {
@@ -102,10 +117,18 @@ export class Language_Manager {
             case _EMode.Lower: _str = _str.toLowerCase(); break;
         }
 
-        _str = `${prefix||""}${this._replace(_str, replacer)}${suffix||""}`;
-        if(handler) _str = handler(_str);
+        _str = `${prefix||""}${await this._replace(_str, replacer)}${suffix||""}`;
+
+        if(handler) {
+            if(sync) {
+                _str = await (handler(_str) as Promise<string>)
+            } else {
+                _str = handler(_str) as string;
+            }
+        }
+
         targets && pArray.flatter(targets).forEach(_ => _.string = _str);
-        return _str
+        return _str;
     }
 
     async get(_opt: _TSetOpt) {
@@ -121,7 +144,7 @@ export class Language_Manager {
         const _out = js.createMap(true) as Record<pTS.languages.EKey, string>;
 
         for(const _opt of opts) {
-            _out[typeof _opt === 'string' ? _opt : _opt.key] = this._get(_opt);
+            _out[typeof _opt === 'string' ? _opt : _opt.key] = await this._get(_opt);
         }
 
         return _out;

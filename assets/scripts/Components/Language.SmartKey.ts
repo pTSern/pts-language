@@ -57,6 +57,10 @@ export class Language_SmartKey extends Component {
         }
     }
 
+    protected __preload(): void {
+        this.keys.forEach(_ => _.init({ func: this._actUpdateKey, binder: this }))
+    }
+
     protected onEnable(): void {
         this._actUpdateTTF();
         this._actUpdateKey();
