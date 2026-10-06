@@ -56,6 +56,7 @@ class _Helper {
 }
 
 @ccclass('pTSAsset_TTFConfig')
+@pTSAsset.menu('Language/TTFConfig')
 @singleton({ initer: '_onAwake', setup: false })
 export class pTSAsset_TTFConfig extends pTSAsset {
     @property({ type: _Helper })
