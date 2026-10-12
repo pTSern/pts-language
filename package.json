@@ -120,7 +120,7 @@
         },
         "menu": [
             {
-                "path": "i18n:menu.extension/pTS Language",
+                "path": "i18n:menu.extension/pTS-Language",
                 "label": "Open Panel",
                 "message": "open-panel"
             }
