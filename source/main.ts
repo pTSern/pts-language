@@ -379,20 +379,23 @@ async function _generate(jsonDir: { db: string; physic: string; project: string 
         fs.writeFileSync(jsPath, _js, 'utf8');
         await Editor.Message.request('asset-db', 'refresh-asset', jsUrl);
 
-        // Update meta for JS to make it a plugin script
-        const objMeta = await Editor.Message.request('asset-db', 'query-asset-meta', jsUrl) as IAssetMeta;
-        if (objMeta) {
+        // Update physical .meta directly (extension asset-db mount is readonly: true, so save-asset-meta IPC is blocked)
+        const jsMetaPath = `${jsPath}.meta`;
+        const pluginSettings: Record<string, any> = {
+            isPlugin: true,
+            loadPluginInWeb: true,
+            loadPluginInNative: true,
+            loadPluginInEditor: true,
+            loadPluginInPreview: true,
+            loadPluginInMiniGame: true,
+            executionScope: "enclosed",
+            simulateGlobals: ["window", "self", "global"],
+        };
+
+        if (fs.existsSync(jsMetaPath)) {
+            const rawMeta = fs.readFileSync(jsMetaPath, 'utf8');
+            const objMeta = JSON.parse(rawMeta);
             objMeta.userData = objMeta.userData || {};
-            const pluginSettings: Record<string, any> = {
-                isPlugin: true,
-                loadPluginInWeb: true,
-                loadPluginInNative: true,
-                loadPluginInEditor: true,
-                loadPluginInPreview: true,
-                loadPluginInMiniGame: true,
-                executionScope: "enclosed",
-                simulateGlobals: ["window", "self", "global"],
-            };
 
             let needUpdate = false;
             for (const key in pluginSettings) {
@@ -408,7 +411,7 @@ async function _generate(jsonDir: { db: string; physic: string; project: string 
             }
 
             if (needUpdate) {
-                await Editor.Message.request('asset-db', 'save-asset-meta', objMeta.uuid, JSON.stringify(objMeta));
+                fs.writeFileSync(jsMetaPath, JSON.stringify(objMeta, null, 2), 'utf8');
                 await Editor.Message.request('asset-db', 'refresh-asset', jsUrl);
             }
         }
@@ -421,6 +424,10 @@ async function _generate(jsonDir: { db: string; physic: string; project: string 
     } catch (e) {
         console.error(`[${pkg.name}] Failed to write plugin assets inside extension:`, e);
     }
+}
+
+function _asset_db_ready() {
+    _shiping();
 }
 
 function _asset_db_notify(uuid: string, event: AssetInfo, meta: IAssetMeta) {
@@ -444,7 +451,8 @@ function _bind(what: string | string[], func: Function, add: boolean) {
 
 export function load() {
     checkPtsCoreDependency(false);
-    _bind(['asset-db:ready', 'asset-db:asset-add', 'asset-db:asset-change', 'asset-db:asset-delete'], _asset_db_notify, true);
+    _bind('asset-db:ready', _asset_db_ready, true);
+    _bind(['asset-db:asset-add', 'asset-db:asset-change', 'asset-db:asset-delete'], _asset_db_notify, true);
     _getConfig().then(() => {
         __state_.resolver();
         _shiping();
@@ -452,5 +460,6 @@ export function load() {
 }
 
 export function unload() {
-    _bind(['asset-db:ready', 'asset-db:asset-add', 'asset-db:asset-change', 'asset-db:asset-delete'], _asset_db_notify, false);
+    _bind('asset-db:ready', _asset_db_ready, false);
+    _bind(['asset-db:asset-add', 'asset-db:asset-change', 'asset-db:asset-delete'], _asset_db_notify, false);
 }
