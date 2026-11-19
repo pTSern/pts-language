@@ -331,24 +331,27 @@ async function _generate(jsonDir: { db: string; physic: string; project: string 
     }
 
     // Build JS Content
-    let _js = `const _$path = ${JSON.stringify(bundleName)};\n`;
-    _js += `const _$langs = ${JSON.stringify(_$langs)};\n`;
-    _js += `const _$container = ${JSON.stringify(_$container)};\n`;
-    _js += `const _$count = ${langCount};\n\n`;
+    let _js = `(function (root) {\n`;
+    _js += `    "use strict";\n`;
+    _js += `    const _$path = ${JSON.stringify(bundleName)};\n`;
+    _js += `    const _$langs = ${JSON.stringify(_$langs)};\n`;
+    _js += `    const _$container = ${JSON.stringify(_$container)};\n`;
+    _js += `    const _$count = ${langCount};\n\n`;
 
-    _js += `function _$has(key) {\n    return !!_$langs[key];\n}\n\n`;
+    _js += `    function _$has(key) {\n        return !!_$langs[key];\n    }\n\n`;
 
-    _js += `function _$load(callback) {\n`;
-    _js += `    const _ = ${JSON.stringify(relPath)};\n`;
-    _js += `    for (const _lang in _$langs) {\n`;
-    _js += `        if (_lang === '__enums__') continue;\n`;
-    _js += `        const _sub = _ ? (_ + '/' + _lang) : _lang;\n`;
-    _js += `        callback(_sub);\n`;
-    _js += `    }\n`;
-    _js += `}\n\n`;
+    _js += `    function _$load(callback) {\n`;
+    _js += `        const _ = ${JSON.stringify(relPath)};\n`;
+    _js += `        for (const _lang in _$langs) {\n`;
+    _js += `            if (_lang === '__enums__') continue;\n`;
+    _js += `            const _sub = _ ? (_ + '/' + _lang) : _lang;\n`;
+    _js += `            callback(_sub);\n`;
+    _js += `        }\n`;
+    _js += `    }\n\n`;
 
-    _js += `window['pTS'] = window['pTS'] || {};\n`;
-    _js += `window['pTS']['languages'] = {\n    ELang: _$langs, path: _$path, EKey: _$container, load: _$load, has: _$has, count: _$count,\n};\n`;
+    _js += `    root.pTS = root.pTS || {};\n`;
+    _js += `    root.pTS.languages = {\n        ELang: _$langs, path: _$path, EKey: _$container, load: _$load, has: _$has, count: _$count,\n    };\n`;
+    _js += `})(typeof globalThis !== "undefined" ? globalThis : (typeof window !== "undefined" ? window : (typeof self !== "undefined" ? self : this)));\n`;
 
     // Build d.ts Content
     let _dts = `declare namespace pTS {\n`;
@@ -380,19 +383,26 @@ async function _generate(jsonDir: { db: string; physic: string; project: string 
         const objMeta = await Editor.Message.request('asset-db', 'query-asset-meta', jsUrl) as IAssetMeta;
         if (objMeta) {
             objMeta.userData = objMeta.userData || {};
-            const pluginSettings = {
+            const pluginSettings: Record<string, any> = {
                 isPlugin: true,
                 loadPluginInWeb: true,
                 loadPluginInNative: true,
                 loadPluginInEditor: true,
                 loadPluginInPreview: true,
-                loadPluginInMiniGame: true
+                loadPluginInMiniGame: true,
+                executionScope: "enclosed",
+                simulateGlobals: ["window", "self", "global"],
             };
 
             let needUpdate = false;
             for (const key in pluginSettings) {
-                if (objMeta.userData[key] !== (pluginSettings as any)[key]) {
-                    objMeta.userData[key] = (pluginSettings as any)[key];
+                const expected = pluginSettings[key];
+                const current = objMeta.userData[key];
+                const same = Array.isArray(expected)
+                    ? Array.isArray(current) && JSON.stringify(current) === JSON.stringify(expected)
+                    : current === expected;
+                if (!same) {
+                    objMeta.userData[key] = expected;
                     needUpdate = true;
                 }
             }
