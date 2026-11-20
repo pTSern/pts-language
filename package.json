@@ -20,9 +20,10 @@
     },
     "panels": {
         "default": {
-            "title": "pTS_Language",
+            "title": "pTS Language",
             "type": "dockable",
             "main": "dist/panel.js",
+            "icon": "./static/icon.png",
             "size": {
                 "min-width": 600,
                 "min-height": 600
